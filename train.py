@@ -34,7 +34,7 @@ if __name__ == "__main__":
     parser.add_argument("--batch_size", type=int, default=8)
     parser.add_argument("--iterations", type=int, default=100000)
     parser.add_argument("--log_steps", type=int, default=100)
-    parser.add_argument("--save_steps", type=int, default=10000)
+    parser.add_argument("--save_steps", type=int, default=1000)
     parser.add_argument("--n_val_images", type=int, default=8)
     parser.add_argument("--noise", type=float, default=0.0)
     parser.add_argument("--noise_iters", type=int, default=20000)
@@ -253,7 +253,8 @@ if __name__ == "__main__":
 
             
             if (n_iter + 1) % args.save_steps == 0:
-                os.system('mkdir checkpoints')            
+                os.system('mkdir checkpoints')     
+                os.system(f"mkdir checkpoints/{wandb.run.id}")       
                 states = {
                     "generator": nets.generator.state_dict(),
                     "generator_ema": nets_ema.generator.state_dict(),
