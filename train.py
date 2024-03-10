@@ -268,4 +268,4 @@ if __name__ == "__main__":
                     "optim_f": optims.f.state_dict(),
                     "optim_s": optims.s.state_dict(),
                 }
-                torch.save(states, f"checkpoints/{wandb.run.id}/checkpoint-{n_iter}.pt")
+                torch.save(states, f"checkpoints/{wandb.run.id}/checkpoint-{n_iter + 1}.pt")
