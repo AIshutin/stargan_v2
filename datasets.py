@@ -55,10 +55,13 @@ class CelebADataset(Dataset):
             lines = f.readlines()
             attr_names = lines[1].strip().split()
             if attributes is not None:
-                index = []
+                index = {}
                 for i, el in enumerate(attr_names):
-                    if el in attributes:
-                        index.append(i)
+                    try:
+                        c = attributes.index(el)
+                        index[i] = c
+                    except ValueError:
+                        continue
                 self.header = attributes
                 assert(len(index) == len(attributes))
             else:
@@ -69,14 +72,12 @@ class CelebADataset(Dataset):
                 line = re.sub(' *\n', '', line)
                 values = re.split(' +', line)
                 filename = values[0]
-                relevant_attributes = []
+                relevant_attributes = [-1] * len(index)
                 is_ok = False
                 for j, v in enumerate(values[1:]):
-                    if j in index:
-                        v = int(v)
-                        if v == 1:
-                            is_ok = True
-                        relevant_attributes.append(v)
+                    if j in index and int(v) == 1:
+                        is_ok = True
+                        relevant_attributes[index[j]] = 1
                 if not is_ok:
                     continue
                 self.filenames.append(filename)

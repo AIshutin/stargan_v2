@@ -9,6 +9,23 @@ import wandb
 from utils import *
 import os
 import copy
+from pathlib import Path
+
+img_size = 256
+transform = transforms.Compose([
+        transforms.Resize(img_size),
+        transforms.CenterCrop(img_size),
+        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=means,
+                            std=stds)
+    ])
+
+to_image = transforms.Compose([
+    transforms.Normalize(std=[1 / el for el in stds], mean=[0] * 3),
+    transforms.Normalize(std=[1] * 3, mean=[-el for el in means]),
+    transforms.ToPILImage()
+])
 
 
 def calculate_generator_loss(styles1, styles2, images, nets, criterions, cyc_weight, div_weight, noise_lev=0.0):
@@ -42,28 +59,18 @@ if __name__ == "__main__":
     parser.add_argument("--gp_weight", type=float, default=1)
     parser.add_argument("--cyc_weight", type=float, default=1)
     parser.add_argument("--weight_decay", type=float, default=1e-4)
-    parser.add_argument("--attributes", nargs="+", default=["Blond_Hair", "Eyeglasses", "No_Beard"])
+    parser.add_argument("--resume", type=Path, default=None)
+    parser.add_argument("--resume_iter", type=int, default=None)
+    parser.add_argument("--attributes", nargs="+", default=["Blond_Hair", "Eyeglasses", "Goatee", 'Male', \
+                                                            'Young', 'Black_Hair', 'Bald', 'Mouth_Slightly_Open', \
+                                                            'Pale_Skin', 'Wearing_Necklace'])
     parser.add_argument("--ema", type=float, default=0.999)
+
     args = parser.parse_args()
     # Spatial size of training images, images are resized to this size.
-    args.img_size = 256 
+    args.img_size = img_size
 
     device = torch.device('cuda' if torch.cuda.is_available() and not args.cpu else 'cpu')
-
-    transform=transforms.Compose([
-        transforms.Resize(args.img_size),
-        transforms.CenterCrop(args.img_size),
-        transforms.RandomHorizontalFlip(),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=means,
-                            std=stds)
-    ])
-
-    to_image=transforms.Compose([
-        transforms.Normalize(std=[1 / el for el in stds], mean=[0] * 3),
-        transforms.Normalize(std=[1] * 3, mean=[-el for el in means]),
-        transforms.ToPILImage()
-    ])
 
     # Load the dataset from file and apply transformations
     dataset = CelebADataset(transform=transform, attributes=args.attributes)
@@ -119,6 +126,23 @@ if __name__ == "__main__":
         d=torch.optim.Adam(nets.discriminator.parameters(), 
                            betas=(0, 0.99), lr=1e-4 * 2, weight_decay=args.weight_decay)
     )
+
+    if args.resume is not None:
+        state = torch.load(args.resume)
+        optims.s.load_state_dict(state['optim_s'])
+        optims.d.load_state_dict(state['optim_d'])
+        optims.f.load_state_dict(state['optim_f'])
+        optims.g.load_state_dict(state['optim_g'])
+        nets_ema.generator.load_state_dict(state['generator_ema'])
+        nets_ema.styler.load_state_dict(state['styler_ema'])
+        nets_ema.mapper.load_state_dict(state['mapper_ema'])
+        nets.generator.load_state_dict(state['generator'])
+        nets.styler.load_state_dict(state['styler'])
+        nets.mapper.load_state_dict(state['mapper'])
+        nets.discriminator.load_state_dict(state['discriminator'])
+        assert(args.resume_iter is not None)
+        del state
+    
     tracker = MetricTracker()
 
     criterions = SuperDict(
@@ -135,6 +159,8 @@ if __name__ == "__main__":
     wandb.run.log_code(".")
 
     for n_iter, ((images, meta), (images1, images2, domains)) in enumerate((zip(tqdm(dataloader), bidataloader))):
+            if args.resume_iter is not None:
+                n_iter += args.resume_iter
             if n_iter > args.iterations:
                 break
             images = images.to(device)
@@ -233,17 +259,18 @@ if __name__ == "__main__":
             if (n_iter + 1) % args.log_steps == 0:
                 with torch.inference_mode():
                     val_images = []
-                    styles = nets_ema.styler(images[0].unsqueeze(0).repeat(args.num_domains, 1, 1, 1), 
-                                                    torch.arange(args.num_domains, device=device))
+                    N = min(args.num_domains, 4)
+                    styles = nets_ema.styler(images[0].unsqueeze(0).repeat(N, 1, 1, 1), 
+                                                    torch.arange(N, device=device))
                     for i in range(args.n_val_images):
                         val_images.append([wandb.Image(to_image(images[i]))])
                         x = images[i].unsqueeze(0)
-                        x = torch.cat([x.clone() for j in range(args.num_domains)], dim=0)
+                        x = torch.cat([x.clone() for j in range(N)], dim=0)
                         new_images = nets_ema.generator(x, styles)
-                        for j in range(args.num_domains):
+                        for j in range(N):
                             val_images[-1].append(wandb.Image(to_image(new_images[j])))
 
-                    table = wandb.Table(data=val_images, columns=['original'] + dataset.header)
+                    table = wandb.Table(data=val_images, columns=['original'] + dataset.header[:N])
 
                     wandb.log({
                         **tracker.to_dict(),

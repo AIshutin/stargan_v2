@@ -1,11 +1,11 @@
 # StarGAN v2
 
 Changes:
-- spectral norm
 - adding noise to images
 - label smoothing
 
 Things to try:
+- spectral norm
 - adaptive residuals
 
 # Setup
@@ -19,3 +19,10 @@ pip3 install -r requirements.txt
 ```bash
 python3 train.py
 ```
+
+Then you can compute LPIPS by running:
+```bash
+python3 test.py --checkpoint checkpoints/my/checkpoint.pt
+```
+
+Open visualizer.ipynb to visualize results.
