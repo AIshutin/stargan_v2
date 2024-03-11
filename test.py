@@ -13,9 +13,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--checkpoint", type=Path)
     parser.add_argument("--n_domains", type=int, default=10)    
-    parser.add_argument("--attributes", nargs="+", default=["Blond_Hair", "Eyeglasses", "No_Beard", 'Male', \
-                                                            'Young', 'Black_Hair', 'Bald', 'Smiling', \
-                                                            'Attractive', 'Wearing_Necklace'])
+    parser.add_argument("--attributes", nargs="+", default=["Blond_Hair", "Eyeglasses", "Goatee", 'Male', \
+                                                            'Young', 'Black_Hair', 'Bald', 'Mouth_Slightly_Open', \
+                                                            'Pale_Skin', 'Wearing_Necklace'])
     parser.add_argument("--samples", type=int, default=100)
     args = parser.parse_args()
 
@@ -38,6 +38,9 @@ if __name__ == "__main__":
         pin_memory=True)
 
     lpips = LPIPS()
+    generator.eval()
+    styler.eval()
+    mapper.eval()
     
     test_iters = args.samples
     values = []

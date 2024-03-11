@@ -4,7 +4,7 @@ from torch.nn import functional as F
 from utils import *
 
 RELU_SLOPE = 0.1
-normalize_layer = lambda x: x # nn.utils.spectral_norm
+normalize_layer = lambda x: x # nn.utils.spectral_norm #
 
 
 def he_initialization_lrelu(m):

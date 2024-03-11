@@ -26,3 +26,10 @@ python3 test.py --checkpoint checkpoints/my/checkpoint.pt
 ```
 
 Open visualizer.ipynb to visualize results.
+
+# Pretrained
+
+Undertrained (10k steps) checkpoint can be downloaded via:
+```bash
+gdown --fuzzy https://drive.google.com/file/d/1CJwZOoVV8aCa2Jvn2cBoDpJLZXnI3KjN/view?usp=sharing
+```
